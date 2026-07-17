@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Smart Agriculture Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+
+    <header class="bg-gray-800 border-b border-gray-700 p-5 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-emerald-400 flex items-center gap-2">
+                🌱 IoT Dashboard Station
+            </h1>
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <p id="connection-status" class="text-sm text-gray-400">Menghubungkan ke ThingSpeak...</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8 space-y-8">
+
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-gray-400 text-sm font-medium">Temperature</p>
+                <p id="txt-temp" class="text-3xl font-bold text-orange-400 mt-2">-- °C</p>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-gray-400 text-sm font-medium">Humidity</p>
+                <p id="txt-hum" class="text-3xl font-bold text-blue-400 mt-2">-- %</p>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-sm">
+                <p class="text-gray-400 text-sm font-medium">Soil Percentage</p>
+                <p id="txt-soil-pc" class="text-3xl font-bold text-emerald-400 mt-2">-- %</p>
+            </div>
+            
+            <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-sm flex flex-col justify-between gap-2">
+                <div class="flex justify-between items-center w-full">
+                    <div>
+                        <p class="text-gray-400 text-xs font-medium">Status Pompa</p>
+                        <p id="txt-pump" class="text-md font-bold text-gray-500">MEMBACA...</p>
+                    </div>
+                    <div id="pump-indicator" class="w-6 h-6 rounded-full bg-gray-600 shadow-[0_0_10px_rgba(156,163,175,0.5)]"></div>
+                </div>
+                <div class="border-t border-gray-700 my-1"></div>
+                <div class="flex justify-between items-center w-full">
+                    <div>
+                        <p class="text-gray-400 text-xs font-medium">Status Kipas</p>
+                        <p id="txt-fan" class="text-md font-bold text-gray-500">MEMBACA...</p>
+                    </div>
+                    <div id="fan-indicator" class="w-6 h-6 rounded-full bg-gray-600 shadow-[0_0_10px_rgba(156,163,175,0.5)]"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-md">
+                <h3 class="text-lg font-semibold mb-4 text-gray-300">Grafik Suhu & Kelembaban</h3>
+                <div class="h-64">
+                    <canvas id="chartTh"></canvas>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-md">
+                <h3 class="text-lg font-semibold mb-4 text-gray-300">Grafik Kelembaban Tanah</h3>
+                <div class="h-64">
+                    <canvas id="chartSoil"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-md">
+            <h3 class="text-xl font-bold mb-6 text-gray-200 border-b border-gray-700 pb-2">Control Panel (4 Channel Relay)</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <div class="bg-gray-750 p-4 rounded-lg border border-gray-700 flex flex-col justify-between items-center gap-4">
+                    <span class="font-medium text-gray-300">Relay 1 (Pompa)</span>
+                    <button onclick="toggleRelay(1)" id="btn-relay-1" class="w-full py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-all duration-200 shadow-md cursor-pointer">
+                        FETCHING...
+                    </button>
+                </div>
+
+                <div class="bg-gray-750 p-4 rounded-lg border border-gray-700 flex flex-col justify-between items-center gap-4">
+                    <span class="font-medium text-gray-300">Relay 2 (Kipas)</span>
+                    <button onclick="toggleRelay(2)" id="btn-relay-2" class="w-full py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-all duration-200 shadow-md cursor-pointer">
+                        FETCHING...
+                    </button>
+                </div>
+
+                <div class="bg-gray-750 p-4 rounded-lg border border-gray-700 flex flex-col justify-between items-center gap-4">
+                    <span class="font-medium text-gray-300">Relay 3</span>
+                    <button onclick="toggleRelay(3)" id="btn-relay-3" class="w-full py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-all duration-200 shadow-md cursor-pointer">
+                        MATI
+                    </button>
+                </div>
+
+                <div class="bg-gray-750 p-4 rounded-lg border border-gray-700 flex flex-col justify-between items-center gap-4">
+                    <span class="font-medium text-gray-300">Relay 4</span>
+                    <button onclick="toggleRelay(4)" id="btn-relay-4" class="w-full py-3 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded-lg transition-all duration-200 shadow-md cursor-pointer">
+                        MATI
+                    </button>
+                </div>
+
+            </div>
+            <p class="text-xs text-gray-500 mt-4 italic">*Catatan: Karena keterbatasan channel gratis ThingSpeak, Relay 1 & 2 terikat dengan Field 5 & 6. Relay 3 & 4 saat ini disimulasikan lokal atau bisa Anda hubungkan ke channel/field tambahan.</p>
+        </section>
+
+    </main>
+
+    <script>
+        // Konfigurasi API Key ThingSpeak Anda
+        const READ_KEY = "ESWNOXD2PP35QSVH";
+        const WRITE_KEY = "YIPE4HL7OH12HWME";
+        const CHANNEL_ID = "3399912"; 
+
+        const readUrl = `https://api.thingspeak.com/channels/3399912/feeds.json?api_key=${READ_KEY}&results=10`; 
+
+        // State Relay Lokal
+        let stateRelay1 = 0;
+        let stateRelay2 = 0;
+        let stateRelay3 = 0;
+        let stateRelay4 = 0;
+
+        // Inisialisasi Chart.js
+        const ctxTh = document.getElementById('chartTh').getContext('2d');
+        const ctxSoil = document.getElementById('chartSoil').getContext('2d');
+
+        const chartTh = new Chart(ctxTh, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Temp (°C)', data: [], borderColor: '#f97316', tension: 0.3, fill: false },
+                    { label: 'Hum (%)', data: [], borderColor: '#3b82f6', tension: 0.3, fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const chartSoil = new Chart(ctxSoil, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Soil (%)', data: [], borderColor: '#10b981', tension: 0.3, fill: false },
+                    { label: 'Soil Raw', data: [], borderColor: '#a855f7', tension: 0.3, fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Fungsi Ambil Data Real-time (Looping setiap 15 detik)
+        async function fetchRealtimeData() {
+            try {
+                const response = await fetch(`https://api.thingspeak.com/channels/` + getChannelId() + `/feeds.json?api_key=${READ_KEY}&results=15`);
+                const data = await response.json();
+                
+                document.getElementById('connection-status').innerText = "Terhubung dengan ThingSpeak";
+                document.getElementById('connection-status').className = "text-sm text-emerald-400";
+
+                const feeds = data.feeds;
+                
+                // Update text widget dari data terakhir (paling baru)
+                const latest = feeds[feeds.length - 1];
+                if(latest) {
+                    document.getElementById('txt-temp').innerText = latest.field1 ? `${parseFloat(latest.field1).toFixed(1)} °C` : '--';
+                    document.getElementById('txt-hum').innerText = latest.field2 ? `${parseFloat(latest.field2).toFixed(1)} %` : '--';
+                    document.getElementById('txt-soil-pc').innerText = latest.field3 ? `${parseFloat(latest.field3).toFixed(1)} %` : '--';
+                    
+                    // Update Status Aktuator berdasarkan Field 5 (Pompa) & Field 6 (Kipas)
+                    stateRelay1 = parseInt(latest.field5) || 0;
+                    stateRelay2 = parseInt(latest.field6) || 0;
+                    
+                    // Pembaruan: Menampilkan status ke UI
+                    updatePumpUI(stateRelay1);
+                    updateFanUI(stateRelay2);
+                    
+                    updateButtonUI(1, stateRelay1);
+                    updateButtonUI(2, stateRelay2);
+                }
+
+                // Kosongkan data chart lama
+                chartTh.data.labels = [];
+                chartTh.data.datasets[0].data = [];
+                chartTh.data.datasets[1].data = [];
+
+                chartSoil.data.labels = [];
+                chartSoil.data.datasets[0].data = [];
+                chartSoil.data.datasets[1].data = [];
+
+                // Parsing data feeds ke Chart
+                feeds.forEach(feed => {
+                    const time = new Date(feed.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    
+                    chartTh.data.labels.push(time);
+                    chartTh.data.datasets[0].data.push(feed.field1);
+                    chartTh.data.datasets[1].data.push(feed.field2);
+
+                    chartSoil.data.labels.push(time);
+                    chartSoil.data.datasets[0].data.push(feed.field3);
+                    chartSoil.data.datasets[1].data.push(feed.field4);
+                });
+
+                chartTh.update();
+                chartSoil.update();
+
+            } catch (error) {
+                console.error("Gagal mengambil data:", error);
+                document.getElementById('connection-status').innerText = "Koneksi Terputus / Salah Channel ID";
+                document.getElementById('connection-status').className = "text-sm text-red-400";
+            }
+        }
+
+        function getChannelId() {
+            return "3399912"; 
+        }
+
+        // Update UI Indikator Pompa (Field 5)
+        function updatePumpUI(state) {
+            const pumpText = document.getElementById('txt-pump');
+            const pumpInd = document.getElementById('pump-indicator');
+            if(state === 1) {
+                pumpText.innerText = "NYALA";
+                pumpText.className = "text-md font-bold text-emerald-400 mt-1";
+                pumpInd.className = "w-6 h-6 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse";
+            } else {
+                pumpText.innerText = "MATI";
+                pumpText.className = "text-md font-bold text-red-500 mt-1";
+                pumpInd.className = "w-6 h-6 rounded-full bg-red-600 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+            }
+        }
+
+        // Pembaruan: Update UI Indikator Kipas (Field 6)
+        function updateFanUI(state) {
+            const fanText = document.getElementById('txt-fan');
+            const fanInd = document.getElementById('fan-indicator');
+            if(state === 1) {
+                fanText.innerText = "NYALA";
+                fanText.className = "text-md font-bold text-emerald-400 mt-1";
+                fanInd.className = "w-6 h-6 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse";
+            } else {
+                fanText.innerText = "MATI";
+                fanText.className = "text-md font-bold text-red-500 mt-1";
+                fanInd.className = "w-6 h-6 rounded-full bg-red-600 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+            }
+        }
+
+        // Update UI Tombol Kontrol
+        function updateButtonUI(relayNum, state) {
+            const btn = document.getElementById(`btn-relay-${relayNum}`);
+            if(!btn) return;
+            if(state === 1) {
+                btn.innerText = "NYALA";
+                btn.className = "w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-all duration-200 shadow-[0_0_10px_rgba(16,185,129,0.4)] cursor-pointer";
+            } else {
+                btn.innerText = "MATI";
+                btn.className = "w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all duration-200 cursor-pointer";
+            }
+        }
+
+        // Fungsi Trigger Kontrol Relay (Kirim data ke ThingSpeak)
+        async function toggleRelay(relayNum) {
+            let targetState = 0;
+            let fieldNum = 0;
+
+            if(relayNum === 1) { stateRelay1 = stateRelay1 === 1 ? 0 : 1; targetState = stateRelay1; fieldNum = 5; }
+            else if(relayNum === 2) { stateRelay2 = stateRelay2 === 1 ? 0 : 1; targetState = stateRelay2; fieldNum = 6; }
+            else if(relayNum === 3) { stateRelay3 = stateRelay3 === 1 ? 0 : 1; updateButtonUI(3, stateRelay3); return; }
+            else if(relayNum === 4) { stateRelay4 = stateRelay4 === 1 ? 0 : 1; updateButtonUI(4, stateRelay4); return; }
+
+            const btn = document.getElementById(`btn-relay-${relayNum}`);
+            btn.innerText = "SENDING...";
+            btn.className = "w-full py-3 bg-yellow-600 text-white font-bold rounded-lg animate-pulse cursor-wait";
+
+            try {
+                const writeUrl = `https://api.thingspeak.com/update?api_key=${WRITE_KEY}&field${fieldNum}=${targetState}`;
+                const res = await fetch(writeUrl);
+                
+                if(res.ok) {
+                    console.log(`Relay ${relayNum} berhasil diubah ke ${targetState}`);
+                    updateButtonUI(relayNum, targetState);
+                    if(relayNum === 1) updatePumpUI(targetState);
+                    if(relayNum === 2) updateFanUI(targetState);
+                } else {
+                    alert("Gagal mengirim perintah. ThingSpeak membatasi request terlalu cepat (limit 15s).");
+                    fetchRealtimeData(); 
+                }
+            } catch (e) {
+                console.error("Error Kontrol Relay: ", e);
+                fetchRealtimeData();
+            }
+        }
+
+        // Loop interval pembacaan data setiap 15 detik
+        fetchRealtimeData();
+        setInterval(fetchRealtimeData, 15000);
+
+    </script>
+</body>
+</html>
